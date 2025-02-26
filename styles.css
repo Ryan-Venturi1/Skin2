@@ -137,6 +137,35 @@
     align-items: center;
   }
   
+  /* Camera error styling */
+  .camera-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    padding: 20px;
+    text-align: center;
+    background-color: #f8f9fa;
+    color: #721c24;
+  }
+  
+  .error-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+  
+  .camera-error h3 {
+    margin-bottom: 12px;
+    color: #721c24;
+  }
+  
+  .camera-error p {
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  
   .camera-target {
     width: 200px;
     height: 200px;
