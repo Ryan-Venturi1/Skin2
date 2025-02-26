@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Skin Scanner</title>
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2ecc71;
+            --warning: #e74c3c;
+            --dark: #34495e;
+            --light: #ecf0f1;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--light);
+            color: var(--dark);
+            min-height: 100vh;
+        }
+        
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        main {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .disclaimer {
+            background-color: #fcf8e3;
+            border-left: 4px solid #f39c12;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+        
+        .disclaimer h3 {
+            color: #e67e22;
+            margin-bottom: 0.5rem;
+        }
+        
+        .camera-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background-color: #111;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        #canvas {
+            display: none;
+        }
+        
+        #photo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        
+        .camera-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .camera-target {
+            width: 200px;
+            height: 200px;
+            border: 2px dashed white;
+            border-radius: 50%;
+            position: relative;
+        }
+        
+        .camera-target::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid white;
+            border-radius: 50%;
+        }
+        
+        .camera-guide {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: white;
+            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+            font-size: 0.9rem;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        button {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--primary);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            flex: 1;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        button.secondary {
+            background-color: #7f8c8d;
+        }
+        
+        button.secondary:hover {
+            background-color: #6a7879;
+        }
+        
+        button.success {
+            background-color: var(--secondary);
+        }
+        
+        button.success:hover {
+            background-color: #27ae60;
+        }
+        
+        .analysis-result {
+            display: none;
+            margin-top: 1rem;
+        }
+        
+        .result-icon {
+            font-size: 3rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        .result-message {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        .result-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .risk-low {
+            color: var(--secondary);
+        }
+        
+        .risk-medium {
+            color: #f39c12;
+        }
+        
+        .risk-high {
+            color: var(--warning);
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary);
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .footer {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #7f8c8d;
+        }
+        
+        @media (max-width: 600px) {
+            .controls {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>AI Skin Scanner</h1>
+        <p>Scan your skin for possible concerns</p>
+    </header>
+    
+    <main>
+        <div class="container">
+            <div class="card">
+                <div class="disclaimer">
+                    <h3>Important Medical Disclaimer</h3>
+                    <p>This application is for educational purposes only and is not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.</p>
+                </div>
+                
+                <h2>Scan Your Skin</h2>
+                <p>Take a clear photo of the skin area you're concerned about. Position the area inside the circle.</p>
+                
+                <div class="camera-container">
+                    <video id="video" autoplay playsinline></video>
+                    <canvas id="canvas"></canvas>
+                    <img id="photo" alt="Captured skin photo">
+                    
+                    <div class="camera-overlay" id="cameraOverlay">
+                        <div class="camera-target"></div>
+                        <div class="camera-guide">Position skin concern in the circle</div>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button id="startCamera">Start Camera</button>
+                    <button id="capturePhoto" disabled>Take Photo</button>
+                    <button id="analyzePhoto" class="success" disabled>Analyze</button>
+                    <button id="resetCamera" class="secondary" disabled>Reset</button>
+                </div>
+                
+                <div class="loading" id="loadingAnalysis">
+                    <div class="spinner"></div>
+                    <p>Analyzing your skin image...</p>
+                </div>
+                
+                <div class="analysis-result" id="analysisResult">
+                    <div class="result-icon" id="resultIcon">⚠️</div>
+                    <h3 class="result-message" id="resultMessage">Analysis Complete</h3>
+                    <div class="result-details">
+                        <div class="result-item">
+                            <strong>Concern Level:</strong>
+                            <span id="concernLevel">Medium</span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Recommendation:</strong>
+                            <span id="recommendation">Consult with a dermatologist</span>
+                        </div>
+                        <div class="result-item">
+                            <strong>Time Frame:</strong>
+                            <span id="timeFrame">Within the next 2 weeks</span>
+                        </div>
+                    </div>
+                    <div class="disclaimer">
+                        <h3>Important:</h3>
+                        <p>This is a simulated result. Real skin conditions require proper medical evaluation by a healthcare professional.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>This is a prototype application. Not for actual medical use.</p>
+        </div>
+    </main>
+
+    <script>
+        // DOM elements
+        const startButton = document.getElementById('startCamera');
+        const captureButton = document.getElementById('capturePhoto');
+        const analyzeButton = document.getElementById('analyzePhoto');
+        const resetButton = document.getElementById('resetCamera');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const photo = document.getElementById('photo');
+        const cameraOverlay = document.getElementById('cameraOverlay');
+        const loadingAnalysis = document.getElementById('loadingAnalysis');
+        const analysisResult = document.getElementById('analysisResult');
+        const resultIcon = document.getElementById('resultIcon');
+        const resultMessage = document.getElementById('resultMessage');
+        const concernLevel = document.getElementById('concernLevel');
+        const recommendation = document.getElementById('recommendation');
+        const timeFrame = document.getElementById('timeFrame');
+        
+        // Stream reference
+        let stream = null;
+        
+        // Start camera
+        startButton.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+                
+                video.srcObject = stream;
+                video.style.display = 'block';
+                photo.style.display = 'none';
+                startButton.disabled = true;
+                captureButton.disabled = false;
+                resetButton.disabled = false;
+                analyzeButton.disabled = true;
+            } catch (err) {
+                console.error('Error accessing camera:', err);
+                alert('Unable to access camera. Please ensure you have given permission and that your device has a camera.');
+            }
+        });
+        
+        // Capture photo
+        captureButton.addEventListener('click', () => {
+            // Set canvas dimensions to match video
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            // Draw the video frame to the canvas
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Convert to data URL and display the captured photo
+            const dataUrl = canvas.toDataURL('image/png');
+            photo.src = dataUrl;
+            
+            // Hide video, show photo
+            video.style.display = 'none';
+            photo.style.display = 'block';
+            cameraOverlay.style.display = 'none';
+            
+            // Update button states
+            captureButton.disabled = true;
+            analyzeButton.disabled = false;
+        });
+        
+        // Reset camera
+        resetButton.addEventListener('click', () => {
+            // Stop the stream if it exists
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            
+            // Reset UI
+            video.srcObject = null;
+            photo.src = '';
+            video.style.display = 'block';
+            photo.style.display = 'none';
+            cameraOverlay.style.display = 'flex';
+            analysisResult.style.display = 'none';
+            
+            // Reset button states
+            startButton.disabled = false;
+            captureButton.disabled = true;
+            analyzeButton.disabled = true;
+            resetButton.disabled = true;
+        });
+        
+        // Analyze photo (simulated)
+        analyzeButton.addEventListener('click', () => {
+            // Show loading
+            loadingAnalysis.style.display = 'block';
+            analyzeButton.disabled = true;
+            
+            // Simulate analysis delay
+            setTimeout(() => {
+                // Hide loading
+                loadingAnalysis.style.display = 'none';
+                
+                // Get a random result
+                const results = [
+                    {
+                        icon: '✅',
+                        message: 'Low Risk Detected',
+                        concern: 'Low',
+                        concernClass: 'risk-low',
+                        recommendation: 'Monitor for changes',
+                        timeFrame: 'No immediate action needed'
+                    },
+                    {
+                        icon: '⚠️',
+                        message: 'Medium Risk Detected',
+                        concern: 'Medium',
+                        concernClass: 'risk-medium',
+                        recommendation: 'Consult with a dermatologist',
+                        timeFrame: 'Within the next 2 weeks'
+                    },
+                    {
+                        icon: '🚨',
+                        message: 'High Risk Detected',
+                        concern: 'High',
+                        concernClass: 'risk-high',
+                        recommendation: 'Seek medical attention',
+                        timeFrame: 'As soon as possible'
+                    }
+                ];
+                
+                // Select a random result
+                const result = results[Math.floor(Math.random() * results.length)];
+                
+                // Update result display
+                resultIcon.textContent = result.icon;
+                resultMessage.textContent = result.message;
+                concernLevel.textContent = result.concern;
+                concernLevel.className = result.concernClass;
+                recommendation.textContent = result.recommendation;
+                timeFrame.textContent = result.timeFrame;
+                
+                // Show result
+                analysisResult.style.display = 'block';
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
