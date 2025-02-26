@@ -410,43 +410,58 @@
             }
         }
         
-        // Function to fetch data from ISIC API (with CORS proxy)
+        // Function to fetch data from ISIC API (with proper query formatting)
         async function fetchFromISIC(endpoint, params = {}) {
             try {
+                // Process query to match ISIC API format
+                if (params.query) {
+                    // Format multi-word diagnoses properly
+                    params.query = params.query.replace(/diagnosis:(\w+)_(\w+)_(\w+)/g, 'diagnosis:"$1 $2 $3"')
+                                               .replace(/diagnosis:(\w+)_(\w+)/g, 'diagnosis:"$1 $2"');
+                }
+                
                 // Build query string
                 const queryParams = new URLSearchParams(params);
                 const url = `${ISIC_API_BASE}${endpoint}?${queryParams}`;
                 
-                // Use a CORS proxy or add mode: 'no-cors' (will return opaque response)
-                const response = await fetch(url, { 
-                    mode: 'no-cors',
+                console.log(`Fetching from ISIC API: ${url}`);
+                
+                const response = await fetch(url, {
                     headers: {
                         'Accept': 'application/json'
                     }
                 });
                 
-                // Note: With no-cors, we can't access the response content
-                // This is a simulation for demo purposes
-                return simulateISICResponse(params.query);
+                if (!response.ok) {
+                    throw new Error(`ISIC API error: ${response.status}`);
+                }
                 
+                return await response.json();
             } catch (error) {
                 console.error('Error fetching from ISIC API:', error);
+                
+                // Fall back to simulation if API call fails
                 return simulateISICResponse(params.query);
             }
         }
         
-        // Function to simulate ISIC API response (since we can't use the real API due to CORS)
+        // Function to simulate ISIC API response (as fallback)
         function simulateISICResponse(query) {
-            const condition = query ? query.split(':')[1] : 'unknown';
+            // Extract condition from query
+            let condition = 'unknown';
+            if (query) {
+                const match = query.match(/diagnosis:"?([^"]+)"?/);
+                condition = match ? match[1] : 'unknown';
+            }
             
             // Create simulated results
             return {
                 results: Array(5).fill().map((_, i) => ({
-                    _id: `simulated_${condition}_${i}`,
+                    isic_id: `simulated_${condition.replace(/\s+/g, '_')}_${i}`,
                     metadata: { diagnosis: condition },
                     files: {
                         thumbnail_256: {
-                            url: `/api/placeholder/256/256?text=${condition}${i}`
+                            url: `https://placehold.co/256x256/e2e8f0/334155?text=${condition.replace(/\s+/g, '_')}${i}`
                         }
                     }
                 }))
@@ -456,7 +471,7 @@
         // Function to search for similar lesions
         async function searchSimilarLesions(diagnosis) {
             const params = {
-                query: `diagnosis:${diagnosis}`,
+                query: `diagnosis:${diagnosis.replace(/\s+/g, '_')}`,
                 limit: 5
             };
             
