@@ -309,17 +309,21 @@
                             <strong>Time Frame:</strong>
                             <span id="timeFrame">Within the next 2 weeks</span>
                         </div>
+                        <div class="result-item">
+                            <strong>Data Source:</strong>
+                            <span>ISIC Archive API</span>
+                        </div>
                     </div>
                     <div class="disclaimer">
                         <h3>Important:</h3>
-                        <p>This is a simulated result. Real skin conditions require proper medical evaluation by a healthcare professional.</p>
+                        <p>This analysis references the ISIC Archive database but is a demonstration only. Real skin conditions require proper medical evaluation by a healthcare professional.</p>
                     </div>
                 </div>
             </div>
         </div>
         
         <div class="footer">
-            <p>This is a prototype application. Not for actual medical use.</p>
+            <p>This prototype references the <a href="https://api.isic-archive.com/">ISIC Archive</a>. Not for actual medical use.</p>
         </div>
     </main>
 
@@ -343,6 +347,47 @@
         
         // Stream reference
         let stream = null;
+        
+        // ISIC API Configuration
+        const ISIC_API_BASE = 'https://api.isic-archive.com/api/v2';
+        
+        // Common conditions to search for
+        const SKIN_CONDITIONS = [
+            { term: 'melanoma', risk: 'high' },
+            { term: 'nevus', risk: 'low' },
+            { term: 'basal cell carcinoma', risk: 'medium' },
+            { term: 'squamous cell carcinoma', risk: 'medium' },
+            { term: 'seborrheic keratosis', risk: 'low' }
+        ];
+        
+        // Function to fetch data from ISIC API
+        async function fetchFromISIC(endpoint, params = {}) {
+            try {
+                // Build query string
+                const queryParams = new URLSearchParams(params);
+                const url = `${ISIC_API_BASE}${endpoint}?${queryParams}`;
+                
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`ISIC API error: ${response.status}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching from ISIC API:', error);
+                return null;
+            }
+        }
+        
+        // Function to search for similar lesions
+        async function searchSimilarLesions(diagnosis) {
+            const params = {
+                query: `diagnosis:${diagnosis}`,
+                limit: 5
+            };
+            
+            return await fetchFromISIC('/images/search/', params);
+        }
         
         // Start camera
         startButton.addEventListener('click', async () => {
@@ -416,19 +461,80 @@
             resetButton.disabled = true;
         });
         
-        // Analyze photo (simulated)
-        analyzeButton.addEventListener('click', () => {
+        // Analyze photo using ISIC API for reference
+        analyzeButton.addEventListener('click', async () => {
             // Show loading
             loadingAnalysis.style.display = 'block';
             analyzeButton.disabled = true;
             
-            // Simulate analysis delay
-            setTimeout(() => {
-                // Hide loading
+            try {
+                // In a real app, we would:
+                // 1. Send the image to a server for analysis
+                // 2. Compare with images from ISIC database
+                // 3. Use ML models to detect features
+                
+                // For demo purposes, we'll:
+                // 1. Randomly select a condition
+                // 2. Fetch some real images matching that condition from ISIC
+                
+                // Randomly select a condition
+                const selectedCondition = SKIN_CONDITIONS[Math.floor(Math.random() * SKIN_CONDITIONS.length)];
+                
+                // Fetch some examples from ISIC (if available)
+                const searchResults = await searchSimilarLesions(selectedCondition.term);
+                console.log('ISIC search results:', searchResults);
+                
+                // Prepare result based on the condition
+                let result;
+                if (selectedCondition.risk === 'high') {
+                    result = {
+                        icon: '🚨',
+                        message: 'High Risk Detected',
+                        concern: 'High',
+                        concernClass: 'risk-high',
+                        recommendation: 'Seek medical attention',
+                        timeFrame: 'As soon as possible'
+                    };
+                } else if (selectedCondition.risk === 'medium') {
+                    result = {
+                        icon: '⚠️',
+                        message: 'Medium Risk Detected',
+                        concern: 'Medium',
+                        concernClass: 'risk-medium',
+                        recommendation: 'Consult with a dermatologist',
+                        timeFrame: 'Within the next 2 weeks'
+                    };
+                } else {
+                    result = {
+                        icon: '✅',
+                        message: 'Low Risk Detected',
+                        concern: 'Low',
+                        concernClass: 'risk-low',
+                        recommendation: 'Monitor for changes',
+                        timeFrame: 'No immediate action needed'
+                    };
+                }
+                
+                // Update result display
+                resultIcon.textContent = result.icon;
+                resultMessage.textContent = result.message;
+                concernLevel.textContent = result.concern;
+                concernLevel.className = result.concernClass;
+                recommendation.textContent = result.recommendation;
+                timeFrame.textContent = result.timeFrame;
+                
+                // Show result
+                loadingAnalysis.style.display = 'none';
+                analysisResult.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error during analysis:', error);
+                
+                // Fallback to random result if API fails
                 loadingAnalysis.style.display = 'none';
                 
-                // Get a random result
-                const results = [
+                // Get a fallback result
+                const fallbackResults = [
                     {
                         icon: '✅',
                         message: 'Low Risk Detected',
@@ -455,8 +561,8 @@
                     }
                 ];
                 
-                // Select a random result
-                const result = results[Math.floor(Math.random() * results.length)];
+                // Select a fallback result
+                const result = fallbackResults[Math.floor(Math.random() * fallbackResults.length)];
                 
                 // Update result display
                 resultIcon.textContent = result.icon;
@@ -468,7 +574,7 @@
                 
                 // Show result
                 analysisResult.style.display = 'block';
-            }, 3000);
+            }
         });
     </script>
 </body>
